@@ -157,13 +157,21 @@ class MCPDebug:
         Returns one of: ``per-request-header``, ``m2m-client-credentials``,
         ``static-token``, ``oauth2-passthrough``, or ``no-auth``.
         """
+        from litellm.proxy._experimental.mcp_server.utils import (
+            lookup_mcp_server_auth_in_headers,
+        )
         from litellm.types.mcp import MCPAuth
 
+        # Resolve through the same helper the outbound call uses, so the
+        # reported resolution cannot disagree with what is actually sent
+        # upstream. A raw dict lookup misses the aliases clients sanitize for
+        # the ``x-mcp-{alias}-{header}`` header name (case, spaces, dashes).
         has_server_specific = bool(
             mcp_server_auth_headers
-            and (
-                mcp_server_auth_headers.get(server.alias or "")
-                or mcp_server_auth_headers.get(server.server_name or "")
+            and lookup_mcp_server_auth_in_headers(
+                mcp_server_auth_headers,
+                alias=server.alias,
+                server_name=server.server_name,
             )
         )
         if has_server_specific or mcp_auth_header:

@@ -192,6 +192,48 @@ class TestResolveAuthResolution:
         )
         assert result == "per-request-header"
 
+    def test_server_specific_header_sanitized_alias(self):
+        """Clients sanitize the alias for the x-mcp-{alias}-{header} header name,
+        so a dashed alias arrives as ``my_server`` (see #35403)."""
+        server = self._make_server(alias="my-server", server_name="my-server")
+        result = MCPDebug.resolve_auth_resolution(
+            server,
+            mcp_auth_header=None,
+            mcp_server_auth_headers={"my_server": {"Authorization": "Bearer xxx"}},
+            oauth2_headers=None,
+        )
+        assert result == "per-request-header"
+
+    def test_server_specific_header_case_insensitive(self):
+        server = self._make_server(alias=None, server_name="GitHub")
+        result = MCPDebug.resolve_auth_resolution(
+            server,
+            mcp_auth_header=None,
+            mcp_server_auth_headers={"github": {"Authorization": "Bearer xxx"}},
+            oauth2_headers=None,
+        )
+        assert result == "per-request-header"
+
+    def test_server_specific_header_matches_server_name_when_alias_unset(self):
+        server = self._make_server(alias=None, server_name="my server")
+        result = MCPDebug.resolve_auth_resolution(
+            server,
+            mcp_auth_header=None,
+            mcp_server_auth_headers={"my_server": {"Authorization": "Bearer xxx"}},
+            oauth2_headers=None,
+        )
+        assert result == "per-request-header"
+
+    def test_server_specific_header_for_other_server_is_not_claimed(self):
+        server = self._make_server(alias="atlas", server_name="atlas")
+        result = MCPDebug.resolve_auth_resolution(
+            server,
+            mcp_auth_header=None,
+            mcp_server_auth_headers={"my_server": {"Authorization": "Bearer xxx"}},
+            oauth2_headers=None,
+        )
+        assert result == "no-auth"
+
     def test_m2m(self):
         server = self._make_server(has_client_credentials=True)
         result = MCPDebug.resolve_auth_resolution(
